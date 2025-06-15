@@ -6,48 +6,72 @@ from googletrans import Translator
 import random
 import time
 
+# Параметры записи
 duration = 5  # секунды записи
 sample_rate = 44100
 
+# Словарь по уровням сложности
 words_by_level = {
-    "easy": ["кот","собака", "яблоко", "молоко", "солнце", "машина"],
-    "medium": ["банан", "школа", "друг", "окно", "жёлтый"],
-    "hard": ["технология", "университет", "информация", "произношение", "воображение"]
+    "easy": {"кот": "cat", "собака": "dog", "яблоко": "apple", "молоко": "milk", "солнце": "sun", "машина": "car"},
+    "medium": {"банан": "banana", "школа": "school", "друг": "friend", "окно": "window", "жёлтый": "yellow"},
+    "hard": {"технология": "technology", "университет": "university", "информация": "information", "произношение": "pronunciation", "воображение": "imagination"}
 }
 
-print('Привет! это игра для проверки твоих знаний по английскому языку. Программа покажет слово на русском , а ты должен будешь назвать это слово на английском')
+print('Привет! Это игра для проверки твоих знаний по английскому языку. Программа покажет слово на русском, а ты должен будешь назвать это слово на английском.')
 time.sleep(2)
-level = input('Выбери словарь по уровню сложности - easy, medium, hard')
+
+# Выбор уровня сложности
+level = input('Выбери словарь по уровню сложности - easy, medium, hard: ')
 if level not in words_by_level:
-    print('нету такого уровня')
+    print('Нет такого уровня!')
+
 word_dict = words_by_level[level]
 score = 0
 mistakes = 0
-print('Вы выбрали уровень: {level}')
 
-random.choice(words_by_level[level])
+print(f'Вы выбрали уровень: {level}')
 
-print("Переведи на английский...")
-recording = sd.rec(
-  int(duration * sample_rate), # длительность записи в сэмплах
-  samplerate=sample_rate,      # частота дискретизации
-  channels=1,                  # 1 — это моно
-  dtype="int16")               # формат аудиоданных
-sd.wait()  
-wav.write("output.wav", sample_rate, recording)
-print("Запись завершена, теперь распознаём...")
-recognizer = sr.Recognizer()
-with sr.AudioFile("output.wav") as source:
-    audio = recognizer.record(source)
+# Главный игровой цикл
+while mistakes < 3:
+    # Выбираем случайное слово
+    russian_word, correct_translation = random.choice(list(word_dict.items()))
+    print(f"\nСлово на русском: {russian_word}")
+    print("Переведи на английский...")
 
-try:
-    text = recognizer.recognize_google(audio, language="en-US")
-    print("Ты сказал:", text)
-    translator = Translator()
-    translated = translator.translate(text, dest='ru') 
+    # Записываем голос
+    recording = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype="int16")
+    sd.wait()  # Ждём окончания записи
+    wav.write("output.wav", sample_rate, recording)  # Сохраняем запись
 
+    print("Запись завершена, теперь распознаём...")
+    recognizer = sr.Recognizer()
 
-except sr.UnknownValueError:             # - если Google не понял речь (шум, молчание)
-    print("Не удалось распознать речь.")
-except sr.RequestError as e:             # - если нет интернета или API недоступен
-    print(f"Ошибка сервиса: {e}")
+    # Распознаём речь
+    with sr.AudioFile("output.wav") as source:
+        audio = recognizer.record(source)
+
+    try:
+        # Преобразуем речь в текст
+        text = recognizer.recognize_google(audio, language="en-US")
+        print(f"Ты сказал: {text}")
+
+        # Сравниваем с правильным переводом
+        if text.lower() == correct_translation:
+            print("Правильный ответ!")
+            score += 1
+        else:
+            print(f"Неправильный ответ! Правильный перевод: {correct_translation}")
+            mistakes += 1
+
+    except sr.UnknownValueError:
+        print("Не удалось распознать речь.")
+    except sr.RequestError as e:
+        print(f"Ошибка сервиса: {e}")
+
+    print(f"Текущий счёт: {score}")
+    print(f"Ошибки: {mistakes}/3")
+
+# Завершение игры
+print("\nИгра окончена!")
+print(f"Ваш итоговый счёт: {score}")
+
